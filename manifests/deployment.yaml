@@ -1,0 +1,109 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tailway-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tailway
+  namespace: tailway-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tailway
+rules:
+  - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - gatewayclasses
+      - gateways
+      - tcproutes
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - gatewayclasses/status
+      - gateways/status
+      - tcproutes/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+      - get
+      - update
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - list
+      - watch
+      - get
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - list
+      - watch
+      - get
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tailway
+  namespace: tailway-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tailway
+subjects:
+  - kind: ServiceAccount
+    name: tailway
+    namespace: tailway-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailway
+  namespace: tailway-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailway
+  template:
+    metadata:
+      labels:
+        app: tailway
+    spec:
+      serviceAccountName: tailway
+      containers:
+        - name: tailway
+          image: "michaelbeaumont/tailway:latest"
+          args:
+            - tailnet
+          volumeMounts:
+            - mountPath: /var/run/tailscale
+              name: var-run-tailscale
+      volumes:
+        - name: var-run-tailscale
+          emptyDir: {}
